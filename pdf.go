@@ -13,7 +13,10 @@ import (
 	"strings"
 )
 
-const maxOutputSize = 100 * 1024 * 1024 // 100MB
+const (
+	maxOutputSizeText  = 100 * 1024 * 1024 // 100MB
+	maxOutputSizeCover = 10 * 1024 * 1024  // 10MB
+)
 
 var (
 	gsExe = "gs"
@@ -60,7 +63,7 @@ func (p PDF) FullText(ctx context.Context) ([]byte, error) {
 	}
 	cmd := exec.CommandContext(ctx, gsExe, args...)
 	cmd.Stdin = p.Data()
-	b := newBoundedBuffer(maxOutputSize)
+	b := newBoundedBuffer(maxOutputSizeText)
 	cmd.Stdout = b
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("failed to get full text of %q: %w", p.Path(), err)
@@ -90,7 +93,7 @@ func (p PDF) Cover(ctx context.Context) ([]byte, error) {
 	}
 	cmd := exec.CommandContext(ctx, gsExe, args...)
 	cmd.Stdin = p.Data()
-	b := newBoundedBuffer(maxOutputSize)
+	b := newBoundedBuffer(maxOutputSizeCover)
 	cmd.Stdout = b
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("failed to get cover of %q: %w", p.Path(), err)
