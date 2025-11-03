@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS pdfs(
 	pages    INT,
 	sig      TEXT,
 	text     TEXT,
+	title    TEXT,
 	cover    BLOB,
 	added_at TEXT
 );
@@ -90,14 +91,14 @@ CREATE TRIGGER IF NOT EXISTS pdfs_ad AFTER DELETE ON pdfs BEGIN
 END;`
 
 const (
-	insertSQL = `INSERT INTO pdfs(path, pages, sig, text, cover, added_at) VALUES(?, ?, ?, ?, ?, ?)`
+	insertSQL = `INSERT INTO pdfs(path, pages, sig, text, title, cover, added_at) VALUES(?, ?, ?, ?, ?, ?, ?)`
 
 	coverSQL = `SELECT cover FROM pdfs WHERE id = ?`
 
-	searchSQL = `SELECT pdfs.id, pdfs.path, pdfs.pages, snippet(pdfs_fts, 0, '{{{', '}}}', '...', 16) ` +
+	searchSQL = `SELECT pdfs.id, pdfs.title, pdfs.path, pdfs.pages, snippet(pdfs_fts, 0, '{{{', '}}}', '...', 16) ` +
 		`FROM pdfs_fts, pdfs WHERE pdfs_fts MATCH ? AND pdfs_fts.rowid = pdfs.id ORDER BY rank LIMIT ?`
 
-	listSQL = `SELECT pdfs.id, pdfs.path, pdfs.pages FROM pdfs WHERE path LIKE ?`
+	listSQL = `SELECT pdfs.id, pdfs.title, pdfs.path, pdfs.pages FROM pdfs WHERE path LIKE ?`
 
 	existsSQL = `SELECT EXISTS (SELECT sig FROM pdfs WHERE sig = ?)`
 )

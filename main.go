@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"errors"
@@ -208,7 +209,12 @@ func addPDF(path string) error {
 		return pagesErr
 	}
 
-	_, err = insertStmt.Exec(path, pages, sig, contents, cover, time.Now())
+	tl, err := title(bytes.NewBuffer(cover))
+	if err != nil {
+		log.Printf("title error %s: %v", path, err)
+	}
+
+	_, err = insertStmt.Exec(path, pages, sig, contents, tl, cover, time.Now())
 	return err
 }
 
@@ -261,11 +267,12 @@ func search(query string, docsToFetch int, namesOnly bool, w io.Writer, matchInB
 	for rows.Next() {
 		var (
 			id      int
+			title   string
 			name    string
 			pages   int
 			snippet string
 		)
-		if err := rows.Scan(&id, &name, &pages, &snippet); err != nil {
+		if err := rows.Scan(&id, &title, &name, &pages, &snippet); err != nil {
 			return fmt.Errorf("search for %q failed, can't scan row: %w", query, err)
 		}
 
@@ -275,7 +282,7 @@ func search(query string, docsToFetch int, namesOnly bool, w io.Writer, matchInB
 			if matchInBold {
 				snippet = repl.Replace(snippet)
 			}
-			fmt.Fprintf(w, "[%d] %s (#%d)\n%s\n\n", id, name, pages, snippet)
+			fmt.Fprintf(w, "[%d] %s (#%d)\nTitle: %s\n%s\n\n", id, name, pages, title, snippet)
 		}
 	}
 	if err := rows.Err(); err != nil && err != sql.ErrNoRows {
@@ -296,14 +303,15 @@ func list(expr string, w io.Writer) error {
 	for rows.Next() {
 		var (
 			id    int
+			title string
 			name  string
 			pages int
 		)
-		if err := rows.Scan(&id, &name, &pages); err != nil {
+		if err := rows.Scan(&id, &title, &name, &pages); err != nil {
 			return fmt.Errorf("list for %q failed, can't scan row: %w", expr, err)
 		}
 
-		fmt.Fprintf(w, "[%d] %s (#%d)\n", id, name, pages)
+		fmt.Fprintf(w, "[%d] %s (#%d)\nTitle: %s\n", id, name, pages, title)
 	}
 	if err := rows.Err(); err != nil && err != sql.ErrNoRows {
 		return fmt.Errorf("list for %q failed, can't fetch rows: %w", expr, err)
