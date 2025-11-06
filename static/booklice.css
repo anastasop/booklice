@@ -1,0 +1,19 @@
+.documents {
+	width: 80%;
+	margin: auto;
+}
+
+.document {
+  margin-bottom: 1em;
+}
+
+.document a {
+  font-weight: bold;
+  font-size: 120%;
+}
+
+.document .snippet {
+  margin: 1em;
+  font-family: monospace;
+  white-space: pre;
+}

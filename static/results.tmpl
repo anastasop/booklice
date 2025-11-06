@@ -1,0 +1,21 @@
+{{define "document"}}
+<div class="document">
+<a href="{{.URL}}" referrerpolicy="no-referrer" target="_blank">[{{.ID}}]] {{.Title | ifempty .URL}} (#{{.Pages}})</a>
+<div class="snippet">{{.Snippet | truncate 1200}}</div>
+</div>
+{{end}}
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/booklice.css">
+    <title>booklice results for {{.Query}}</title>
+  </head>
+  <body>
+    <div class="documents">
+      {{range .Results}}{{template "document" .}}{{end}}
+    </div>
+  </body>
+</html>

@@ -138,7 +138,22 @@ func main() {
 		},
 	}
 
-	rootCmd.Subcommands = []*ffcli.Command{addCmd, coverCmd, searchCmd, listCmd}
+	serverFs := flag.NewFlagSet("serverFlags", flag.ExitOnError)
+	listenAddr := serverFs.String("l", ":8080", "server listen address")
+	announceAddr := serverFs.String("a", "localhost:8080", "server announce address for opensearch")
+	resolveAddr := serverFs.String("r", "localhost:8080", "use this to resolve document links")
+	serverCmd := &ffcli.Command{
+		Name:       "server",
+		ShortUsage: "server [flags]",
+		ShortHelp:  "Start an http server for opensearch",
+		LongHelp:   "Start an http server for opensearch",
+		FlagSet:    serverFs,
+		Exec: func(ctx context.Context, args []string) error {
+			return startOpenSearchServer(*listenAddr, *announceAddr, *resolveAddr)
+		},
+	}
+
+	rootCmd.Subcommands = []*ffcli.Command{addCmd, coverCmd, searchCmd, listCmd, serverCmd}
 
 	if err := rootCmd.Parse(os.Args[1:]); err != nil {
 		log.Fatal(err)
@@ -274,6 +289,7 @@ type SearchResult struct {
 	Name    string
 	Pages   int
 	Snippet string
+	URL     string // used only by opensearch server
 }
 
 // search queries the index for pdfs, fetches at most docsToFetch and writes snippets to w
