@@ -100,8 +100,22 @@ func main() {
 				return flag.ErrHelp
 			}
 			query := args[0]
-			if err := search(query, *docsToFetch, *namesOnly, os.Stdout, *matchInBold); err != nil {
+			results, err := search(query, *docsToFetch)
+			if err != nil {
 				return fmt.Errorf("failed to search for %q: %w", query, err)
+			}
+			if *namesOnly {
+				for _, r := range results {
+					fmt.Printf("[%d] %s (#%d)\n", r.ID, r.Name, r.Pages)
+				}
+			} else {
+				repl := strings.NewReplacer("{{{", "\033[1m", "}}}", "\033[0m")
+				for _, r := range results {
+					if *matchInBold {
+						r.Snippet = repl.Replace(r.Snippet)
+					}
+					fmt.Printf("[%d] %s (#%d)\nTitle: %s\n%s\n\n", r.ID, r.Name, r.Pages, r.Title, r.Snippet)
+				}
 			}
 			return nil
 		},
@@ -254,42 +268,37 @@ func showCover(id int, viewer string) error {
 	return exec.Command(vpath, fout.Name()).Run()
 }
 
+type SearchResult struct {
+	ID      int
+	Title   string
+	Name    string
+	Pages   int
+	Snippet string
+}
+
 // search queries the index for pdfs, fetches at most docsToFetch and writes snippets to w
 // If w is an ANSI terminal use matchInBold to display the matched term in bold
-func search(query string, docsToFetch int, namesOnly bool, w io.Writer, matchInBold bool) error {
+func search(query string, docsToFetch int) ([]SearchResult, error) {
 	rows, err := searchStmt.Query(query, docsToFetch)
 	if err != nil {
-		return fmt.Errorf("search for %q failed: %w", query, err)
+		return nil, fmt.Errorf("search for %q failed: %w", query, err)
 	}
 	defer rows.Close()
 
-	repl := strings.NewReplacer("{{{", "\033[1m", "}}}", "\033[0m")
-	for rows.Next() {
-		var (
-			id      int
-			title   string
-			name    string
-			pages   int
-			snippet string
-		)
-		if err := rows.Scan(&id, &title, &name, &pages, &snippet); err != nil {
-			return fmt.Errorf("search for %q failed, can't scan row: %w", query, err)
-		}
+	var results []SearchResult
 
-		if namesOnly {
-			fmt.Fprintf(w, "[%d] %s (#%d)\n", id, name, pages)
-		} else {
-			if matchInBold {
-				snippet = repl.Replace(snippet)
-			}
-			fmt.Fprintf(w, "[%d] %s (#%d)\nTitle: %s\n%s\n\n", id, name, pages, title, snippet)
+	for rows.Next() {
+		var res SearchResult
+		if err := rows.Scan(&res.ID, &res.Title, &res.Name, &res.Pages, &res.Snippet); err != nil {
+			return nil, fmt.Errorf("search for %q failed, can't scan row: %w", query, err)
 		}
+		results = append(results, res)
 	}
 	if err := rows.Err(); err != nil && err != sql.ErrNoRows {
-		return fmt.Errorf("search for %q failed, can't fetch rows: %w", query, err)
+		return nil, fmt.Errorf("search for %q failed, can't fetch rows: %w", query, err)
 	}
 
-	return nil
+	return results, nil
 }
 
 // list queries the index for pdfs with paths matching (sql like) expression
